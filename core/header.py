@@ -20,36 +20,42 @@ Description:
 
 import struct
 import time
+from secureTCP.config import DEFAULT_PORT
 
-'''Wire Format (v1.0)
-    
-'''
 
-# Header format
+        ###CONSTANTS###
 HEADER_FORMAT = "!BBBBLLHHHL" # 22 Bytes (Exclude HMAC)
 HMAC_LEN = 16
 HEADER_FORMAT_FULL = HEADER_FORMAT+"16s"
-# Header Length
 HEADER_LEN = struct.calcsize(HEADER_FORMAT_FULL)
 # Additional Constants
 RESERVED = 0x0
-# Pack header
-def pack_header(payload_len, src_port, dst_port, seq_num=0, ack_num=0, version=1, flags=0b0):
+
+
+# Packs the header in preparation for attachment to payload. Does not include HMAC.
+def pack_header(payload_len, src_port, dst_port, seq_num=0, ack_num=0, version=1, flags=0b0) -> bytes:
     timestamp = int(time.time())
     return struct.pack( HEADER_FORMAT,
                      version, flags, HEADER_LEN,
                         RESERVED, seq_num, ack_num, payload_len,
                         src_port, dst_port, timestamp )
-# Unpack Header
-def unpack_header(header):
+
+# Unpack header received and return as tuple.
+def unpack_header(header) -> tuple:
     if len(header) != HEADER_LEN:
         raise ValueError(f"Header length must be {HEADER_LEN}, got {len(header)}")
     return struct.unpack(HEADER_FORMAT_FULL, header)
-# Validate version
-def validate_version(header, expected_version):
+
+# Validate version in header field
+def validate_version(header, expected_version) -> bool:
     version, *rest_of_header = struct.unpack(HEADER_FORMAT_FULL, header)
     return version == expected_version
-# Validate Length
-def validate_header_len(header):
+
+# Validate Length of header
+def validate_header_len(header: bytes) -> bool:
     unpackedHeader = struct.unpack(HEADER_FORMAT_FULL, header)
     return unpackedHeader[2] == HEADER_LEN
+# Get hmac from header
+def get_hmac(header) -> bytes:
+    unpackedHeader = struct.unpack(HEADER_FORMAT_FULL, header)
+    return unpackedHeader[10]
